@@ -2,3 +2,4 @@ node_modules/
 .embark/
 dist/
 .node-*
+build/
