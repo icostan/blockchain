@@ -36,7 +36,7 @@ contract Voting {
     votesReceived[candidate] += 1;
   }
 
-  function winnerName(bytes32 candidate) returns (bytes32) {
+  function winnerName() returns (bytes32) {
     uint winner = 0;
     for(uint i = 0; i < candidateList.length; i++) {
       if (votesReceived[candidateList[i]] > winner) {
