@@ -1,0 +1,11 @@
+/Crypto.class
+/Transaction$Input.class
+/Transaction$Output.class
+/Transaction.class
+/TxHandler.class
+/UTXO.class
+/UTXOPool.class
+/TxHandlerTest.class
+/TxHandlerTests.class
+/MaxFeeTxHandler.class
+/MaxFeeTxHandler$1.class
