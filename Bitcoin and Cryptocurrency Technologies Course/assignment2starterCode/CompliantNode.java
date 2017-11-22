@@ -1,7 +1,10 @@
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 /* CompliantNode refers to a node that follows the rules (not malicious)*/
 public class CompliantNode implements Node {
@@ -11,7 +14,10 @@ public class CompliantNode implements Node {
 	private double numRounds;
 
 	private boolean[] followees;
-	private double[] malicious;
+	private double followees_count;
+
+	private int round;
+	private double relay_threshold;
 
 	private Set<Transaction> pool = null; // all received transactions
 	private Set<Transaction> transactions = null; // pending transactions
@@ -21,12 +27,15 @@ public class CompliantNode implements Node {
 		this.p_malicious = p_malicious;
 		this.p_txDistribution = p_txDistribution;
 		this.numRounds = numRounds;
-
 	}
 
 	public void setFollowees(boolean[] followees) {
 		this.followees = followees;
-		this.malicious = new double[followees.length];
+		for (boolean b : followees) {
+			if (b)
+				this.followees_count += 1;
+		}
+		System.out.println("Node follows " + followees_count);
 	}
 
 	public void setPendingTransaction(Set<Transaction> pendingTransactions) {
@@ -39,58 +48,43 @@ public class CompliantNode implements Node {
 	}
 
 	public void receiveFromFollowees(Set<Candidate> candidates) {
+		calculate_relay_threshold();
+
 		for (Candidate candidate : candidates) {
 			pool.add(candidate.tx);
 		}
 
-		Map<Integer, Set<Transaction>> candidateTransactions = new HashMap<>();
+		Map<Transaction, Set<Integer>> transactionCandidates = new HashMap<>();
 		for (Candidate candidate : candidates) {
-			if (!candidateTransactions.containsKey(candidate.sender))
-				candidateTransactions.put(candidate.sender, new HashSet<>());
+			if (!transactionCandidates.containsKey(candidate.tx))
+				transactionCandidates.put(candidate.tx, new HashSet<>());
 
-			candidateTransactions.get(candidate.sender).add(candidate.tx);
+			transactionCandidates.get(candidate.tx).add(candidate.sender);
 		}
 
-		for (int sender : candidateTransactions.keySet()) {
-			Set<Transaction> transactions = candidateTransactions.get(sender);
+		this.transactions.clear();
 
-			// too less or too many transactions
-			// if (transactions.size() < min_count() || transactions.size() > max_count()) {
-			// malicious[sender] += round_weight();
-			// }
+		for (Transaction tx : transactionCandidates.keySet()) {
+			Set<Integer> senders = transactionCandidates.get(tx);
 
-			// dead node - zero transactions
-			if (transactions.size() == 0) {
-				mark_as_malicious(sender);
-			}
-
-			if (!is_malicious(sender)) {
-				this.transactions.addAll(transactions);
+			if (transaction_ratio(senders.size()) > relay_threshold) {
+				this.transactions.add(tx);
 			}
 		}
 	}
 
-	private boolean is_malicious(int sender) {
-		return malicious[sender] < p_malicious;
-	}
-
-	private void mark_as_malicious(int sender) {
-		malicious[sender] += round_weight();
+	private double transaction_ratio(int senders_count) {
+		return senders_count / followees_count;
 	}
 
 	private double round_weight() {
-		return numRounds / 100;
+		return numRounds / 100.0;
 	}
 
-	private int distribution_count() {
-		return (int) (p_txDistribution * pool.size());
-	}
+	private void calculate_relay_threshold() {
+		this.round++;
+		this.relay_threshold = round_weight();
 
-	private int min_count() {
-		return (int) (distribution_count() * 0.5);
-	}
-
-	private int max_count() {
-		return (int) (distribution_count() * 1.5);
+		System.out.println("Round: " + round + " relay threshold: " + relay_threshold);
 	}
 }

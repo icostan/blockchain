@@ -6,6 +6,7 @@
 // mixing them in the network to fully test.
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.HashMap;
@@ -125,11 +126,15 @@ public class Simulation {
 			Set<Transaction> transactions = nodes[i].sendToFollowers();
 			System.out.println("Transaction ids that Node " + i + " believes consensus on: " + transactions.size());
 
+			Map<Integer, Set<Transaction>> consensus = new HashMap<>();
 			if (transactions.size() > 0) {
-				boolean success = consensusTransactions.retainAll(transactions);
-				System.out.println("Consensus transactions: " + consensusTransactions.size());
+				if (!consensus.containsKey(transactions.size()))
+					consensus.put(transactions.size(), new HashSet<>());
+
+				consensus.get(transactions.size()).retainAll(transactions);
+				System.out.println("Consensus transactions: " + consensus.get(transactions.size()).size());
 			}
-			
+
 			// for (Transaction tx : transactions)
 			// System.out.println(tx.id);
 			System.out.println();
