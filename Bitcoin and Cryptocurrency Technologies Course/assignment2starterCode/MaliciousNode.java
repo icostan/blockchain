@@ -4,6 +4,8 @@ import java.util.HashSet;
 
 public class MaliciousNode implements Node {
 
+	Set<Transaction> pendingTransactions;
+	
     public MaliciousNode(double p_graph, double p_malicious, double p_txDistribution, int numRounds) {
     }
 
@@ -12,11 +14,15 @@ public class MaliciousNode implements Node {
     }
 
     public void setPendingTransaction(Set<Transaction> pendingTransactions) {
-        return;
+        this.pendingTransactions = pendingTransactions;
     }
 
     public Set<Transaction> sendToFollowers() {
-        return new HashSet<Transaction>();
+    		if (Math.random() < 0.5) {
+    			return new HashSet<Transaction>();
+    		} else {
+        	    	return pendingTransactions;
+    		}
     }
 
     public void receiveFromFollowees(Set<Candidate> candidates) {

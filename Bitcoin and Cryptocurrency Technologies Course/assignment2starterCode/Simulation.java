@@ -6,6 +6,7 @@
 // mixing them in the network to fully test.
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.HashMap;
@@ -113,27 +114,26 @@ public class Simulation {
 			}
 		}
 
-		Set<Transaction> consensusTransactions = new HashSet<>();
+		Set<Transaction> allTransactions = new HashSet<>();
 		for (int txId : validTxIds) {
-			consensusTransactions.add(new Transaction(txId));
+			allTransactions.add(new Transaction(txId));
 		}
-		System.out.println("All transactions: " + consensusTransactions.size());
+		System.out.println("All transactions: " + allTransactions.size());
+
+		Map<Integer, Set<Transaction>> consensus = new HashMap<>();
 
 		// print results
 		for (int i = 0; i < numNodes; i++) {
-
 			Set<Transaction> transactions = nodes[i].sendToFollowers();
 			System.out.println("Transaction ids that Node " + i + " believes consensus on: " + transactions.size());
 
-			if (transactions.size() > 0) {
-				boolean success = consensusTransactions.retainAll(transactions);
-				System.out.println("Consensus transactions: " + consensusTransactions.size());
-			}
-			
-			// for (Transaction tx : transactions)
-			// System.out.println(tx.id);
-			System.out.println();
-			System.out.println();
+			if (!consensus.containsKey(transactions.size()))
+				consensus.put(transactions.size(), transactions);
+
+			consensus.get(transactions.size()).retainAll(transactions);
+		}
+		for (Integer size : consensus.keySet()) {
+			System.out.println("Consensus on: " + size + " transactions: " + consensus.get(size).size());
 		}
 	}
 }

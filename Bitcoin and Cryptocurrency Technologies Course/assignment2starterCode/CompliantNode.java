@@ -11,27 +11,28 @@ public class CompliantNode implements Node {
 	private double numRounds;
 
 	private boolean[] followees;
-	private double[] malicious;
+	private double followees_count;
 
-	private Set<Transaction> pool = null; // all received transactions
-	private Set<Transaction> transactions = null; // pending transactions
+	private int round;
+	private double relay_threshold;
+
+	private Set<Transaction> transactions = null; // transactions to broadcast
 
 	public CompliantNode(double p_graph, double p_malicious, double p_txDistribution, int numRounds) {
 		this.p_graph = p_graph;
 		this.p_malicious = p_malicious;
 		this.p_txDistribution = p_txDistribution;
 		this.numRounds = numRounds;
-
 	}
 
 	public void setFollowees(boolean[] followees) {
 		this.followees = followees;
-		this.malicious = new double[followees.length];
+
+		calculate_followees_count(followees);
 	}
 
 	public void setPendingTransaction(Set<Transaction> pendingTransactions) {
 		this.transactions = pendingTransactions;
-		this.pool = pendingTransactions;
 	}
 
 	public Set<Transaction> sendToFollowers() {
@@ -39,58 +40,62 @@ public class CompliantNode implements Node {
 	}
 
 	public void receiveFromFollowees(Set<Candidate> candidates) {
+		Map<Transaction, Set<Integer>> transactionCandidates = new HashMap<>();
 		for (Candidate candidate : candidates) {
-			pool.add(candidate.tx);
+			if (!transactionCandidates.containsKey(candidate.tx))
+				transactionCandidates.put(candidate.tx, new HashSet<>());
+
+			transactionCandidates.get(candidate.tx).add(candidate.sender);
 		}
 
-		Map<Integer, Set<Transaction>> candidateTransactions = new HashMap<>();
-		for (Candidate candidate : candidates) {
-			if (!candidateTransactions.containsKey(candidate.sender))
-				candidateTransactions.put(candidate.sender, new HashSet<>());
+		calculate_relay_threshold();
+		System.out
+				.println("Round: " + round + " Followees:" + followees_count + " Relay threshold: " + relay_threshold);
 
-			candidateTransactions.get(candidate.sender).add(candidate.tx);
-		}
+		calculate_transactions(transactionCandidates);
+	}
 
-		for (int sender : candidateTransactions.keySet()) {
-			Set<Transaction> transactions = candidateTransactions.get(sender);
+	private void calculate_transactions(Map<Transaction, Set<Integer>> transactionCandidates) {
+		this.transactions.clear();
 
-			// too less or too many transactions
-			// if (transactions.size() < min_count() || transactions.size() > max_count()) {
-			// malicious[sender] += round_weight();
-			// }
+		for (Transaction tx : transactionCandidates.keySet()) {
+			Set<Integer> senders = transactionCandidates.get(tx);
 
-			// dead node - zero transactions
-			if (transactions.size() == 0) {
-				mark_as_malicious(sender);
-			}
-
-			if (!is_malicious(sender)) {
-				this.transactions.addAll(transactions);
+			// the many senders pushed this tx the stronger it gets
+			if (transaction_ratio(senders.size()) > relay_threshold) {
+				this.transactions.add(tx);
 			}
 		}
 	}
 
-	private boolean is_malicious(int sender) {
-		return malicious[sender] < p_malicious;
+	private void calculate_followees_count(boolean[] followees) {
+		for (boolean b : followees) {
+			if (b)
+				this.followees_count += 1;
+		}
 	}
 
-	private void mark_as_malicious(int sender) {
-		malicious[sender] += round_weight();
+	private double transaction_ratio(int senders_count) {
+		return senders_count / followees_count;
 	}
 
 	private double round_weight() {
-		return numRounds / 100;
+		return 100.0 / numRounds * 0.01;
 	}
 
-	private int distribution_count() {
-		return (int) (p_txDistribution * pool.size());
+	private double followee_weight() {
+		return round_weight() / followees_count;
 	}
 
-	private int min_count() {
-		return (int) (distribution_count() * 0.5);
-	}
+	// relay threshold increases with each round
+	private void calculate_relay_threshold() {
+		this.round++;
 
-	private int max_count() {
-		return (int) (distribution_count() * 1.5);
+		if (relay_threshold == 0) {
+			this.relay_threshold = round_weight();
+		} else {
+			// TODO: figure out a weight distribution based on exponential function
+			this.relay_threshold += round_weight() * (round / 100.0) + followee_weight() * (round / 100);
+		}
 	}
 }
